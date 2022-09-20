@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "dashboard-backend"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-hao0gnmqi33r"
+s3_prefix = "dashboard-backend"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = ["CAPABILITY_IAM","CAPABILITY_NAMED_IAM"]
+image_repositories = []

@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  dashboard-sam
+
+  SAM Template for deploying the Dashboard backend
+
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+#
+#                       DynamoDB Tables
+#
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+
+
+  CheckInTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: check_in
+      AttributeDefinitions:
+        - AttributeName: "user_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "user_id"
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+#
+#                       Layers
+#
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: common-layer
+      Description: Lambda layer containing common code across all dashboard functions
+      ContentUri: src/common
+      CompatibleRuntimes:
+        - python3.9
+
+
+
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+#
+#                       Execution Roles
+#
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+
+
+  DashboardLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      RoleName: dashboard_lambda_role
+
+
+
+
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+#
+#                       Lambda Functions
+#
+# ----- % ----- % ----- % ----- % ----- % ----- % ----- % -----
+
+  CheckInUserLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/modules/check-in/
+      Handler: check-in-user.handler
+      Runtime: python3.9
+      Role: !GetAtt DashboardLambdaRole.Arn
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref CommonLayer
+      Events:
+        DashboardAPI:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /check-in
+            Method: post
+
+  CheckInStatusLambda:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: src/modules/check-in/
+      Handler: status.handler
+      Runtime: python3.9
+      Role: !GetAtt DashboardLambdaRole.Arn
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref CommonLayer
+      Events:
+        DashboardAPI:
+          Type: Api
+          Properties:
+            Path: /check-in/{user_id}
+            Method: get
